@@ -1,11 +1,19 @@
 package abs;
 
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 
 import exceptions.ImproperDataFormatException;
 import misc.JDefaultMarker;
@@ -17,13 +25,16 @@ public abstract class JPointPlot extends JPlot {
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	private float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
+	
+	private int ppu = 50;
+	
+	private Dimension preferredSize = new Dimension(Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppu)
+	, Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppu + (float) editorBar.getPreferredSize().getHeight()));
+	
 	protected ArrayList<float[]> xDataSets;
 	protected ArrayList<float[]> yDataSets;
 	protected ArrayList<JPlotMarker> assocMarkers;
-	
-	private float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
-	
-	private int ppu = 70;
 	
 	public JPointPlot() {
 		super();
@@ -31,6 +42,21 @@ public abstract class JPointPlot extends JPlot {
 		yDataSets = new ArrayList<>();
 		assocMarkers = new ArrayList<>();
 		legend.setMarkers(assocMarkers);
+		addUIComponents();
+	}
+	
+	private void addUIComponents() {
+		editorBar.setLayout(new FlowLayout(FlowLayout.LEFT));
+		try {
+			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\drag.png")))));
+			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\zoom.png")))));
+			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\axis.png")))));
+			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png")))));
+			repaint();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	public JPointPlot(float[] xData, float[] yData) {
@@ -118,7 +144,7 @@ public abstract class JPointPlot extends JPlot {
 	}
 	
 	protected int convertY(float y) {
-		return topMargin + Math.round((yMax - y) / ySpacing * ppu);
+		return Math.round((float) editorBar.getPreferredSize().getHeight() + topMargin + (yMax - y) / ySpacing * ppu);
 	}
 	
 	private float determineXSpacing() {
@@ -188,19 +214,26 @@ public abstract class JPointPlot extends JPlot {
 		repaint();
 	}
 	
+	@Override
+	public Dimension getPreferredSize() {
+		return preferredSize;
+	}
+	
 	@Override 
 	public int getWidth() {
-		return super.rightMargin + super.leftMargin + (int) Math.round((xMax - xMin) / xSpacing * ppu);
+		return Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppu);
 	}
 	
 	@Override
 	public int getHeight() {
-		return super.topMargin + super.bottomMargin + (int) Math.round((yMax - yMin) / ySpacing * ppu);
+		return Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppu + (float) editorBar.getPreferredSize().getHeight());
 	}
 	
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
+		
+		editorBar.repaint();
 		drawEdge(g);
 		int legendStartHeight = drawTicks(g);
 		drawData(g);
@@ -214,19 +247,20 @@ public abstract class JPointPlot extends JPlot {
 	}
 	
 	private void drawEdge(Graphics g) {
-		float vSpan = yMax - yMin, hSpan = xMax - xMin;
+		
+		int i = convertX(xMin), j = convertX(xMax), k = convertY(yMin), l = convertY(yMax);
 		
 		// Left border
-		g.drawLine(leftMargin, topMargin, leftMargin, topMargin + (int) (vSpan / ySpacing* ppu));
+		g.drawLine(i, l, i, k);
 		
 		// Top border
-		g.drawLine(leftMargin, topMargin, leftMargin + (int) (hSpan / xSpacing * ppu), topMargin);
+		g.drawLine(i, l, j, l);
 		
 		// Bottom border
-		g.drawLine(leftMargin, topMargin + (int) (vSpan / ySpacing * ppu), leftMargin + (int) (hSpan / xSpacing * ppu), topMargin + (int) (vSpan / ySpacing * ppu));
+		g.drawLine(i, k, j, k);
 		
 		// Right border
-		g.drawLine(leftMargin + (int) (hSpan / xSpacing * ppu), topMargin, leftMargin + (int) (hSpan / xSpacing * ppu), topMargin + (int) (vSpan / ySpacing * ppu));
+		g.drawLine(j, l, j, k);
 	}
 	
 	private int drawTicks(Graphics g) {
@@ -236,12 +270,12 @@ public abstract class JPointPlot extends JPlot {
 		int tickLength = 5, k = fm.getHeight();
 		for (float f = yMin; f <= yMax; f += ySpacing) {
 			int j = convertY(f);
-			g.drawLine(leftMargin, j, leftMargin + tickLength, j);
+			g.drawLine(convertX(xMin), j, convertX(xMin) + tickLength, j);
 			String label = Float.toString(f);
 			g.drawString(label, leftMargin - fm.stringWidth(label) - 5, j + k / 2 - 2);
 		}
 		
-		int i = topMargin + (int) ((yMax - yMin) / ySpacing * ppu);
+		int i = convertY(yMin);
 		
 		for (float f = xMin; f <= xMax; f += xSpacing) {
 			int j = convertX(f);
@@ -255,13 +289,13 @@ public abstract class JPointPlot extends JPlot {
 	private void drawTitleAndLabels(Graphics g) {
 		FontMetrics fm = g.getFontMetrics();
 		int x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppu) / 2.0f - fm.stringWidth(title) / 2.0f);
-		int y = (topMargin + fm.getHeight()) / 2;
+		int y = (convertY(yMax)+ topMargin) / 2;
 		
 		g.setColor(Color.BLACK);
 		g.drawString(title, x, y);
 		
 		x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppu) / 2.0f - fm.stringWidth(xLabel) / 2.0f);
-		y = topMargin + (int) ((yMax - yMin) / ySpacing * ppu) + 2 * fm.getHeight();
+		y = convertY(yMin) + 2 * fm.getHeight();
 		g.drawString(xLabel, x, y);
 		
 		AffineTransform at = new AffineTransform();
@@ -270,7 +304,7 @@ public abstract class JPointPlot extends JPlot {
 		Graphics2D g2d = (Graphics2D) g;
 		g2d.setTransform(at);
 		
-		x = -1 * Math.round(1.30f * ((yMax - yMin) / ySpacing * ppu) / 2.0f + topMargin +  fm.stringWidth(yLabel) / 2.0f);
+		x = -1 * Math.round(1.30f * ((yMax - yMin) / ySpacing * ppu) / 2.0f + topMargin +  fm.stringWidth(yLabel) / 2.0f  + (float) editorBar.getPreferredSize().getHeight());
 		y = 30;
 		
 		g2d.drawString(yLabel, x, y);

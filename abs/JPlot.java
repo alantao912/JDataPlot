@@ -3,7 +3,7 @@ package abs;
 
 import java.awt.BorderLayout;
 
-import javax.swing.JButton;
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JToolBar;
 
@@ -14,6 +14,8 @@ public abstract class JPlot extends JPanel {
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	protected JToolBar editorBar;
+	
 	public int topMargin = 60, rightMargin = 60, bottomMargin = 90, leftMargin = 80;
 	public  String title, xLabel = "x - axis", yLabel = "y - axis";
 	
@@ -21,10 +23,10 @@ public abstract class JPlot extends JPanel {
 	
 	public JPlot() {
 		legend = new JPlotLegend();
+		editorBar = new JToolBar();
+		editorBar.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 		setLayout(new BorderLayout());
-		JToolBar bruh = new JToolBar();
-		bruh.add(new JButton());
-		add(bruh, BorderLayout.SOUTH);
+		add(editorBar, BorderLayout.NORTH);
 	}
 	
 	

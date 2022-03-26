@@ -1,10 +1,7 @@
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.util.Random;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JToolBar;
 
 import plots.JLinePlot;
 
@@ -21,7 +18,6 @@ public class Test {
 
 	public static void main(String[] args) {
 		JFrame window = new JFrame();
-		window.setLayout(new BorderLayout());
 		JLinePlot js = new JLinePlot();
 		js.addDataSet(getRandomDataSet(100, 100), getRandomDataSet(100, 100));
 		js.setColor(0, Color.BLUE);
@@ -31,13 +27,8 @@ public class Test {
 		js.yLabel = "Height";
 		
 		
-		JToolBar toolbar = new JToolBar();
-		toolbar.add(new JButton("Penis"));
-		window.add(toolbar, BorderLayout.NORTH);
-		
-		
-		window.add(js, BorderLayout.CENTER);
-		window.setSize(js.getWidth() + 15, js.getHeight() + 35 + (int) toolbar.getPreferredSize().getHeight());
+		window.add(js);
+		window.setSize(js.getWidth() + 15, js.getHeight() + 35);
 		
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		window.setVisible(true);

@@ -54,7 +54,7 @@ public class JPlotLegend {
 			for (int i = 0; i < dataSetLabels.size(); ++i) {
 				x += 4;
 				JPlotMarker marker = markers.get(i);
-				marker.plotPoint(g, x, y);
+				marker.plotPoint(g, x, y + 1);
 				x += 4;
 				x += 2;
 				g.setColor(Color.BLACK);

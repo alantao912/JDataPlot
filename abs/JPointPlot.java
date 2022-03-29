@@ -1,11 +1,15 @@
 package abs;
 
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +24,11 @@ import misc.JDefaultMarker;
 
 public abstract class JPointPlot extends JPlot {
 	
+	// TODO Create logarithmic scale
+	// TODO Create drag feature
+	// TODO Create zoom feature
+	// TODO Create 
+	
 	/**
 	 * 
 	 */
@@ -32,9 +41,14 @@ public abstract class JPointPlot extends JPlot {
 	private Dimension preferredSize = new Dimension(Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppu)
 	, Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppu + (float) editorBar.getPreferredSize().getHeight()));
 	
+	private byte mode = -1;
+	private int x1, y1, x2, y2;
+	private JButton zoomButton = null;
+	
 	protected ArrayList<float[]> xDataSets;
 	protected ArrayList<float[]> yDataSets;
 	protected ArrayList<JPlotMarker> assocMarkers;
+
 	
 	public JPointPlot() {
 		super();
@@ -47,16 +61,86 @@ public abstract class JPointPlot extends JPlot {
 	
 	private void addUIComponents() {
 		editorBar.setLayout(new FlowLayout(FlowLayout.LEFT));
+		
+		JButton dragButton = null, axisButton = null, dataButton = null, homeButton = null;
+		
 		try {
-			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\drag.png")))));
-			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\zoom.png")))));
-			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\axis.png")))));
-			editorBar.add(new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png")))));
-			repaint();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			dragButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\drag.png"))));
+			dragButton.addActionListener((ActionEvent e) -> {
+				mode = 0;
+			});
+			
+			homeButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\home.png"))));
+			homeButton.addActionListener((ActionEvent e) -> {});
+			
+			zoomButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\zoom.png"))));
+			zoomButton.addActionListener((ActionEvent e) -> {
+				mode = 1;
+				zoomButton.setEnabled(false);
+				setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
+			});
+			
+			
+			axisButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\axis.png"))));
+			axisButton.addActionListener((ActionEvent e) -> {
+				
+			});
+			
+			dataButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png"))));
+			dataButton.addActionListener((ActionEvent e) -> {
+			});
+		} catch(IOException e) {
+			
 		}
+				
+			
+		editorBar.add(dragButton);
+		editorBar.add(homeButton);
+		editorBar.add(zoomButton);
+		editorBar.add(axisButton);
+		editorBar.add(dataButton);
+		addMouseMotionListener(new MouseAdapter() {
+			
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				if (mode != 1) {
+					return;
+				}
+				
+				if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+					x2 = e.getX();
+					y2 = e.getY();
+				}
+				repaint();
+			}
+		});
+		
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if (mode != 1) {
+					return;
+				}
+				
+				if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+					x1 = e.getX();
+					y1 = e.getY();
+				}
+				
+			}
+			
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if (mode != 1) {
+					return;
+				}
+				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+				mode = -1;
+				zoomButton.setEnabled(true);
+				
+				repaint();
+			}
+		});
 	}
 	
 	public JPointPlot(float[] xData, float[] yData) {
@@ -242,7 +326,11 @@ public abstract class JPointPlot extends JPlot {
 			legend.drawLegend(g, leftMargin, legendStartHeight, (int) ((xMax - xMin) / xSpacing * ppu));
 		}
 		
-		drawTitleAndLabels(g);
+		drawTitleAndLabels(g.create());
+		if (mode == 1) {
+			g.setColor(Color.LIGHT_GRAY);
+			g.drawRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x1 - x2), Math.abs(y1 - y2));
+		}
 		
 	}
 	

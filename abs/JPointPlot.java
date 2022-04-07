@@ -34,12 +34,14 @@ public abstract class JPointPlot extends JPlot {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
+	private static final Cursor defaultCursor = new Cursor(Cursor.DEFAULT_CURSOR), selectCursor = new Cursor(Cursor.CROSSHAIR_CURSOR);
 	
-	private int ppu = 50;
+	protected float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
 	
-	private Dimension preferredSize = new Dimension(Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppu)
-	, Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppu + (float) editorBar.getPreferredSize().getHeight()));
+	private int ppuX = 50, ppuY = 50;
+	
+	private Dimension preferredSize = new Dimension(Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppuX)
+	, Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppuY + (float) editorBar.getPreferredSize().getHeight()));
 	
 	private byte mode = -1;
 	private int x1, y1, x2, y2;
@@ -77,7 +79,7 @@ public abstract class JPointPlot extends JPlot {
 			zoomButton.addActionListener((ActionEvent e) -> {
 				mode = 1;
 				zoomButton.setEnabled(false);
-				setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
+				setCursor(selectCursor);
 			});
 			
 			
@@ -89,16 +91,21 @@ public abstract class JPointPlot extends JPlot {
 			dataButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png"))));
 			dataButton.addActionListener((ActionEvent e) -> {
 			});
-		} catch(IOException e) {
-			
-		}
-				
+		} catch(IOException e) {}
 			
 		editorBar.add(dragButton);
 		editorBar.add(homeButton);
+		homeButton.addActionListener((ActionEvent e) -> {
+			
+			
+			
+			repaint();
+		});
+		
 		editorBar.add(zoomButton);
 		editorBar.add(axisButton);
 		editorBar.add(dataButton);
+		
 		addMouseMotionListener(new MouseAdapter() {
 			
 			@Override
@@ -134,9 +141,11 @@ public abstract class JPointPlot extends JPlot {
 				if (mode != 1) {
 					return;
 				}
-				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+				setCursor(defaultCursor);
 				mode = -1;
 				zoomButton.setEnabled(true);
+				
+				doZoomTransformation();
 				
 				repaint();
 			}
@@ -224,29 +233,57 @@ public abstract class JPointPlot extends JPlot {
 	}
 	
 	protected int convertX(float x) {
-		return leftMargin + Math.round((x - xMin) / xSpacing * ppu);
+		return leftMargin + Math.round((x - xMin) / xSpacing * ppuX);
 	}
 	
 	protected int convertY(float y) {
-		return Math.round((float) editorBar.getPreferredSize().getHeight() + topMargin + (yMax - y) / ySpacing * ppu);
+		return Math.round((float) editorBar.getPreferredSize().getHeight() + topMargin + (yMax - y) / ySpacing * ppuY);
 	}
 	
+	protected float convertX(int x) {
+		return xMin + (x - leftMargin) * xSpacing / ppuX;
+	}
+	
+	protected float convertY(int y) {
+		return Math.round(yMax - (y - (float) editorBar.getPreferredSize().getHeight() - topMargin) * ySpacing / ppuY);
+	}
+	
+	private void doZoomTransformation() {
+		float topLeftX = convertX(Math.min(x1, x2)), topLeftY = convertY(Math.min(y1, y2));
+		float bottomRightX = convertX(Math.max(x1, x2)), bottomRightY = convertY(Math.max(y1, y2));
+		
+		float prevNumPixelX = (xMax - xMin) * ppuX / xSpacing;
+		
+		xMin = topLeftX;
+		xMax = bottomRightX;
+		
+		float prevNumPixelY = (yMax - yMin) * ppuY / ySpacing;
+		
+		yMax = topLeftY;
+		yMin = bottomRightY;
+		
+		xSpacing = determineXSpacing();
+		ySpacing = determineYSpacing();
+		
+		ppuX = Math.round(prevNumPixelX * xSpacing / (xMax - xMin));
+		ppuY = Math.round(prevNumPixelY * ySpacing / (yMax - yMin));
+	}
+
 	private float determineXSpacing() {
 		int[] multiples = new int[] {1, 2, 5};
 		
 		float spacing, base = 1.0f;
 		
 		while (true) {
-			spacing = base;
 			
 			boolean toolarge = false;
 			
 			for (int i : multiples) {
-				spacing *= i;
+				spacing = base * i;
 				
 				float numFill = (xMax - xMin) / spacing;
 				
-				if (numFill < 1) {
+				if (numFill < 4) {
 					toolarge = true;
 					break;
 				} else if (numFill < 10) {
@@ -268,16 +305,15 @@ public abstract class JPointPlot extends JPlot {
 		float spacing, base = 1.0f;
 		
 		while (true) {
-			spacing = base;
 			
 			boolean toolarge = false;
 			
 			for (int i : multiples) {
-				spacing *= i;
+				spacing = base * i;
 				
 				float numFill = (yMax - yMin) / spacing;
 				
-				if (numFill < 1) {
+				if (numFill < 4) {
 					toolarge = true;
 					break;
 				} else if (numFill < 10) {
@@ -293,8 +329,9 @@ public abstract class JPointPlot extends JPlot {
 		}
 	}
 	
-	public void setPPU(int newPPU) {
-		ppu = newPPU;
+	public void setPPU(int ppuX, int ppuY) {
+		this.ppuX = ppuX;
+		this.ppuY = ppuY;
 		repaint();
 	}
 	
@@ -305,12 +342,12 @@ public abstract class JPointPlot extends JPlot {
 	
 	@Override 
 	public int getWidth() {
-		return Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppu);
+		return Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppuX);
 	}
 	
 	@Override
 	public int getHeight() {
-		return Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppu + (float) editorBar.getPreferredSize().getHeight());
+		return Math.round(topMargin + bottomMargin + (yMax - yMin) / ySpacing * ppuY + (float) editorBar.getPreferredSize().getHeight());
 	}
 	
 	@Override
@@ -323,10 +360,11 @@ public abstract class JPointPlot extends JPlot {
 		drawData(g);
 		
 		if (legend.visible) { 
-			legend.drawLegend(g, leftMargin, legendStartHeight, (int) ((xMax - xMin) / xSpacing * ppu));
+			legend.drawLegend(g, leftMargin, legendStartHeight, (int) ((xMax - xMin) / xSpacing * ppuX));
 		}
 		
 		drawTitleAndLabels(g.create());
+		
 		if (mode == 1) {
 			g.setColor(Color.LIGHT_GRAY);
 			g.drawRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x1 - x2), Math.abs(y1 - y2));
@@ -376,13 +414,13 @@ public abstract class JPointPlot extends JPlot {
 	
 	private void drawTitleAndLabels(Graphics g) {
 		FontMetrics fm = g.getFontMetrics();
-		int x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppu) / 2.0f - fm.stringWidth(title) / 2.0f);
+		int x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppuX) / 2.0f - fm.stringWidth(title) / 2.0f);
 		int y = (convertY(yMax)+ topMargin) / 2;
 		
 		g.setColor(Color.BLACK);
 		g.drawString(title, x, y);
 		
-		x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppu) / 2.0f - fm.stringWidth(xLabel) / 2.0f);
+		x = Math.round(leftMargin + ((xMax - xMin) / xSpacing * ppuX) / 2.0f - fm.stringWidth(xLabel) / 2.0f);
 		y = convertY(yMin) + 2 * fm.getHeight();
 		g.drawString(xLabel, x, y);
 		
@@ -392,7 +430,7 @@ public abstract class JPointPlot extends JPlot {
 		Graphics2D g2d = (Graphics2D) g;
 		g2d.setTransform(at);
 		
-		x = -1 * Math.round(1.30f * ((yMax - yMin) / ySpacing * ppu) / 2.0f + topMargin +  fm.stringWidth(yLabel) / 2.0f  + (float) editorBar.getPreferredSize().getHeight());
+		x = -1 * Math.round(1.30f * ((yMax - yMin) / ySpacing * ppuY) / 2.0f + topMargin +  fm.stringWidth(yLabel) / 2.0f  + (float) editorBar.getPreferredSize().getHeight());
 		y = 30;
 		
 		g2d.drawString(yLabel, x, y);

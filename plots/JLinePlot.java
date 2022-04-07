@@ -69,10 +69,18 @@ public class JLinePlot extends JPointPlot {
 			int j;
 			for (j = 0; j < xData.length - 1; ++j)
 			{
-				marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
-				g.drawLine(convertX(xData[j]), convertY(yData[j]), convertX(xData[j + 1]), convertY(yData[j + 1]));
+				
+				if (xData[j] < xMax && xData[j] > xMin && yData[j] < yMax && yData[j] > yMin) {
+					marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
+				}
+				
+				if ((xData[j] < xMax && xData[j] > xMin && yData[j] < yMax && yData[j] > yMin) && (xData[j + 1] < xMax && xData[j + 1] > xMin && yData[j + 1] < yMax && yData[j + 1] > yMin)) {
+					g.drawLine(convertX(xData[j]), convertY(yData[j]), convertX(xData[j + 1]), convertY(yData[j + 1]));
+				}
 			}
-			marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
+			if (xData[j] < xMax && xData[j] > xMin && yData[j] < yMax && yData[j] > yMin) {
+				marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
+			}
 		}
 		
 	}

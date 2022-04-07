@@ -28,7 +28,9 @@ public class JScatterPlot extends JPointPlot {
 			JPlotMarker marker = assocMarkers.get(i);
 			for (int j = 0; j < xData.length; ++j)
 			{
-				marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
+				if (xData[j] < xMax && xData[j] > xMin && yData[j] < yMax && yData[j] > yMin) {
+					marker.plotPoint(g, convertX(xData[j]), convertY(yData[j]));
+				}
 			}
 		}
 		

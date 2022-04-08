@@ -38,6 +38,10 @@ public abstract class JPointPlot extends JPlot {
 	
 	protected float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
 	
+	private boolean resized = false;
+	private float oxMax, oxMin, oyMax, oyMin, oxSpacing, oySpacing;
+	
+	
 	private int ppuX = 50, ppuY = 50;
 	
 	private Dimension preferredSize = new Dimension(Math.round(rightMargin + leftMargin + (xMax - xMin) / xSpacing * ppuX)
@@ -46,6 +50,7 @@ public abstract class JPointPlot extends JPlot {
 	private byte mode = -1;
 	private int x1, y1, x2, y2;
 	private JButton zoomButton = null;
+	
 	
 	protected ArrayList<float[]> xDataSets;
 	protected ArrayList<float[]> yDataSets;
@@ -96,9 +101,15 @@ public abstract class JPointPlot extends JPlot {
 		editorBar.add(dragButton);
 		editorBar.add(homeButton);
 		homeButton.addActionListener((ActionEvent e) -> {
+			xMax = oxMax;
+			xMin = oxMin;
+			yMax = oyMax;
+			yMin = oyMin;
+			xSpacing = oxSpacing;
+			ySpacing = oySpacing;
 			
-			
-			
+			ppuX = 50;
+			ppuY = 50;
 			repaint();
 		});
 		
@@ -144,6 +155,17 @@ public abstract class JPointPlot extends JPlot {
 				setCursor(defaultCursor);
 				mode = -1;
 				zoomButton.setEnabled(true);
+				
+				if (!resized) {
+					oxMax = xMax;
+					oxMin = xMin;
+					oyMax = yMax;
+					oyMin = yMin;
+					oxSpacing = xSpacing;
+					oySpacing = ySpacing;
+					
+					resized = true;
+				}
 				
 				doZoomTransformation();
 				

@@ -3,7 +3,7 @@ import java.util.Random;
 
 import javax.swing.JFrame;
 
-import plots.JLinePlot;
+import plots.JScatterPlot;
 
 public class Test {
 	
@@ -18,7 +18,7 @@ public class Test {
 
 	public static void main(String[] args) {
 		JFrame window = new JFrame();
-		JLinePlot js = new JLinePlot();
+		JScatterPlot js = new JScatterPlot();
 		js.addDataSet(getRandomDataSet(100, 100), getRandomDataSet(100, 100));
 		js.setColor(0, Color.BLUE);
 		js.addDataSet(getRandomDataSet(100, 300), getRandomDataSet(100, 300), new TestMarker());

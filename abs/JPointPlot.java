@@ -34,7 +34,7 @@ public abstract class JPointPlot extends JPlot {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private static final Cursor defaultCursor = new Cursor(Cursor.DEFAULT_CURSOR), selectCursor = new Cursor(Cursor.CROSSHAIR_CURSOR);
+	private static final Cursor defaultCursor = new Cursor(Cursor.DEFAULT_CURSOR), selectCursor = new Cursor(Cursor.CROSSHAIR_CURSOR), dragCursor = new Cursor(Cursor.MOVE_CURSOR);
 	
 	protected float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
 	
@@ -49,7 +49,7 @@ public abstract class JPointPlot extends JPlot {
 	
 	private byte mode = -1;
 	private int x1, y1, x2, y2;
-	private JButton zoomButton = null;
+	private JButton zoomButton = null, homeButton = null;
 	
 	
 	protected ArrayList<float[]> xDataSets;
@@ -69,33 +69,22 @@ public abstract class JPointPlot extends JPlot {
 	private void addUIComponents() {
 		editorBar.setLayout(new FlowLayout(FlowLayout.LEFT));
 		
-		JButton dragButton = null, axisButton = null, dataButton = null, homeButton = null;
+		JButton dragButton = null, axisButton = null, dataButton = null;
 		
 		try {
 			dragButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\drag.png"))));
-			dragButton.addActionListener((ActionEvent e) -> {
-				mode = 0;
-			});
 			
 			homeButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\home.png"))));
-			homeButton.addActionListener((ActionEvent e) -> {});
+			homeButton.setEnabled(false);
 			
 			zoomButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\zoom.png"))));
-			zoomButton.addActionListener((ActionEvent e) -> {
-				mode = 1;
-				zoomButton.setEnabled(false);
-				setCursor(selectCursor);
-			});
 			
 			
 			axisButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\axis.png"))));
-			axisButton.addActionListener((ActionEvent e) -> {
-				
-			});
+			
 			
 			dataButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png"))));
-			dataButton.addActionListener((ActionEvent e) -> {
-			});
+			
 		} catch(IOException e) {}
 			
 		editorBar.add(dragButton);
@@ -110,7 +99,18 @@ public abstract class JPointPlot extends JPlot {
 			
 			ppuX = 50;
 			ppuY = 50;
+			mode = -1;
 			repaint();
+		});
+		
+		dragButton.addActionListener((ActionEvent e) -> {
+			mode = 0;
+		});
+		
+		zoomButton.addActionListener((ActionEvent e) -> {
+			mode = 1;
+			zoomButton.setEnabled(false);
+			setCursor(selectCursor);
 		});
 		
 		editorBar.add(zoomButton);
@@ -121,55 +121,83 @@ public abstract class JPointPlot extends JPlot {
 			
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				if (mode != 1) {
-					return;
+				if (mode == 1) {
+					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+						x2 = e.getX();
+						y2 = e.getY();
+					}
+					repaint();
+				} else if (mode == 0) {
+					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+						
+						if (!resized) {
+							oxMax = xMax;
+							oxMin = xMin;
+							oyMax = yMax;
+							oyMin = yMin;
+							oxSpacing = xSpacing;
+							oySpacing = ySpacing;
+							
+							resized = true;
+							homeButton.setEnabled(true);
+						}
+						
+						int dx = x1 - e.getX();
+						int dy = e.getY() - y1;
+						xMax += xSpacing * dx / (float) ppuX;
+						xMin += xSpacing * dx / (float) ppuX;
+						
+						yMax += ySpacing * dy / (float) ppuY;
+						yMin += ySpacing * dy / (float) ppuY;
+						
+						x1 = e.getX();
+						y1 = e.getY();
+						repaint();
+					}
+					
 				}
-				
-				if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
-					x2 = e.getX();
-					y2 = e.getY();
-				}
-				repaint();
 			}
 		});
 		
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				if (mode != 1) {
-					return;
+				if (mode == 1 || mode == 0) {
+					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+						x1 = e.getX();
+						y1 = e.getY();
+					}
 				}
-				
-				if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
-					x1 = e.getX();
-					y1 = e.getY();
+				if (mode == 0) {
+					setCursor(dragCursor);
 				}
 				
 			}
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				if (mode != 1) {
-					return;
-				}
 				setCursor(defaultCursor);
-				mode = -1;
-				zoomButton.setEnabled(true);
-				
-				if (!resized) {
-					oxMax = xMax;
-					oxMin = xMin;
-					oyMax = yMax;
-					oyMin = yMin;
-					oxSpacing = xSpacing;
-					oySpacing = ySpacing;
+				if (mode == 1) {
+					setCursor(defaultCursor);
+					mode = -1;
+					zoomButton.setEnabled(true);
 					
-					resized = true;
+					if (!resized) {
+						oxMax = xMax;
+						oxMin = xMin;
+						oyMax = yMax;
+						oyMin = yMin;
+						oxSpacing = xSpacing;
+						oySpacing = ySpacing;
+						
+						resized = true;
+						homeButton.setEnabled(true);
+					}
+					
+					doZoomTransformation();
+					
+					repaint();
 				}
-				
-				doZoomTransformation();
-				
-				repaint();
 			}
 		});
 	}

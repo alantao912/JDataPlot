@@ -25,9 +25,6 @@ import misc.JDefaultMarker;
 public abstract class JPointPlot extends JPlot {
 	
 	// TODO Create logarithmic scale
-	// TODO Create drag feature
-	// TODO Create zoom feature
-	// TODO Create 
 	
 	/**
 	 * 
@@ -38,7 +35,7 @@ public abstract class JPointPlot extends JPlot {
 	
 	protected float xMax = 10, xMin = 0, yMax = 10, yMin = 0, xSpacing, ySpacing;
 	
-	private boolean resized = false;
+	protected boolean resized = false;
 	private float oxMax, oxMin, oyMax, oyMin, oxSpacing, oySpacing;
 	
 	
@@ -49,14 +46,15 @@ public abstract class JPointPlot extends JPlot {
 	
 	private byte mode = -1;
 	private int x1, y1, x2, y2;
-	private JButton zoomButton = null, homeButton = null;
+	private JButton zoomButton = null;
+	protected JButton homeButton = null;
+	private AxisEditor axisEditor = new AxisEditor(this);
 	
 	
 	protected ArrayList<float[]> xDataSets;
 	protected ArrayList<float[]> yDataSets;
 	protected ArrayList<JPlotMarker> assocMarkers;
 
-	
 	public JPointPlot() {
 		super();
 		xDataSets = new ArrayList<>();
@@ -81,6 +79,7 @@ public abstract class JPointPlot extends JPlot {
 			
 			
 			axisButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\axis.png"))));
+			axisButton.addActionListener((ActionEvent e) -> { axisEditor.setVisible(!axisEditor.isVisible());});
 			
 			
 			dataButton = new JButton(new ImageIcon(ImageIO.read(new File("res\\clipboard.png"))));
@@ -90,15 +89,7 @@ public abstract class JPointPlot extends JPlot {
 		editorBar.add(dragButton);
 		editorBar.add(homeButton);
 		homeButton.addActionListener((ActionEvent e) -> {
-			xMax = oxMax;
-			xMin = oxMin;
-			yMax = oyMax;
-			yMin = oyMin;
-			xSpacing = oxSpacing;
-			ySpacing = oySpacing;
-			
-			ppuX = 50;
-			ppuY = 50;
+			restoreOriginalBounds();
 			mode = -1;
 			repaint();
 		});
@@ -121,40 +112,31 @@ public abstract class JPointPlot extends JPlot {
 			
 			@Override
 			public void mouseDragged(MouseEvent e) {
+				if (!mouseWithinFrame(e)) {
+					return;
+				}
 				if (mode == 1) {
-					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
-						x2 = e.getX();
-						y2 = e.getY();
-					}
+					x2 = e.getX();
+					y2 = e.getY();
 					repaint();
-				} else if (mode == 0) {
-					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
-						
-						if (!resized) {
-							oxMax = xMax;
-							oxMin = xMin;
-							oyMax = yMax;
-							oyMin = yMin;
-							oxSpacing = xSpacing;
-							oySpacing = ySpacing;
-							
-							resized = true;
-							homeButton.setEnabled(true);
-						}
-						
-						int dx = x1 - e.getX();
-						int dy = e.getY() - y1;
-						xMax += xSpacing * dx / (float) ppuX;
-						xMin += xSpacing * dx / (float) ppuX;
-						
-						yMax += ySpacing * dy / (float) ppuY;
-						yMin += ySpacing * dy / (float) ppuY;
-						
-						x1 = e.getX();
-						y1 = e.getY();
-						repaint();
+				} else if (mode == 0) {	
+					if (!resized) {
+						saveOriginalBounds();
+						resized = true;
+						homeButton.setEnabled(true);
 					}
 					
+					int dx = x1 - e.getX();
+					int dy = e.getY() - y1;
+					xMax += xSpacing * dx / (float) ppuX;
+					xMin += xSpacing * dx / (float) ppuX;
+					
+					yMax += ySpacing * dy / (float) ppuY;
+					yMin += ySpacing * dy / (float) ppuY;
+					
+					x1 = e.getX();
+					y1 = e.getY();
+					repaint();
 				}
 			}
 		});
@@ -163,7 +145,7 @@ public abstract class JPointPlot extends JPlot {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				if (mode == 1 || mode == 0) {
-					if (e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax)) {
+					if (mouseWithinFrame(e)) {
 						x1 = e.getX();
 						y1 = e.getY();
 					}
@@ -183,19 +165,11 @@ public abstract class JPointPlot extends JPlot {
 					zoomButton.setEnabled(true);
 					
 					if (!resized) {
-						oxMax = xMax;
-						oxMin = xMin;
-						oyMax = yMax;
-						oyMin = yMin;
-						oxSpacing = xSpacing;
-						oySpacing = ySpacing;
-						
+						saveOriginalBounds();
 						resized = true;
 						homeButton.setEnabled(true);
 					}
-					
 					doZoomTransformation();
-					
 					repaint();
 				}
 			}
@@ -298,6 +272,31 @@ public abstract class JPointPlot extends JPlot {
 		return Math.round(yMax - (y - (float) editorBar.getPreferredSize().getHeight() - topMargin) * ySpacing / ppuY);
 	}
 	
+	protected void saveOriginalBounds() {
+		oxMax = xMax;
+		oxMin = xMin;
+		oyMax = yMax;
+		oyMin = yMin;
+		oxSpacing = xSpacing;
+		oySpacing = ySpacing;
+	}
+	
+	private void restoreOriginalBounds() {
+		xMax = oxMax;
+		xMin = oxMin;
+		yMax = oyMax;
+		yMin = oyMin;
+		xSpacing = oxSpacing;
+		ySpacing = oySpacing;
+		
+		ppuX = 50;
+		ppuY = 50;
+	}
+	
+	private boolean mouseWithinFrame(MouseEvent e) {
+		return e.getX() > convertX(xMin) && e.getX() < convertX(xMax) && e.getY() < convertY(yMin) && e.getY() > convertY(yMax);
+	}
+	
 	private void doZoomTransformation() {
 		float topLeftX = convertX(Math.min(x1, x2)), topLeftY = convertY(Math.min(y1, y2));
 		float bottomRightX = convertX(Math.max(x1, x2)), bottomRightY = convertY(Math.max(y1, y2));
@@ -318,7 +317,26 @@ public abstract class JPointPlot extends JPlot {
 		ppuX = Math.round(prevNumPixelX * xSpacing / (xMax - xMin));
 		ppuY = Math.round(prevNumPixelY * ySpacing / (yMax - yMin));
 	}
-
+	
+	protected void doZoomTransformation(float xMin1, float xMax1, float yMin1, float yMax1) {
+		
+		float prevNumPixelX = (xMax - xMin) * ppuX / xSpacing;
+		
+		xMin = xMin1;
+		xMax = xMax1;
+		
+		float prevNumPixelY = (yMax - yMin) * ppuY / ySpacing;
+		
+		yMax = yMax1;
+		yMin = yMin1;
+		
+		xSpacing = determineXSpacing();
+		ySpacing = determineYSpacing();
+		
+		ppuX = Math.round(prevNumPixelX * xSpacing / (xMax - xMin));
+		ppuY = Math.round(prevNumPixelY * ySpacing / (yMax - yMin));
+	}
+	
 	private float determineXSpacing() {
 		int[] multiples = new int[] {1, 2, 5};
 		
@@ -444,20 +462,27 @@ public abstract class JPointPlot extends JPlot {
 		FontMetrics fm = g.getFontMetrics();
 		
 		int tickLength = 5, k = fm.getHeight();
-		for (float f = yMin; f <= yMax; f += ySpacing) {
-			int j = convertY(f);
-			g.drawLine(convertX(xMin), j, convertX(xMin) + tickLength, j);
-			String label = Float.toString(f);
-			g.drawString(label, leftMargin - fm.stringWidth(label) - 5, j + k / 2 - 2);
+		if (axisEditor.isYLogarithmic) {
+		
+		} else {
+			for (float f = yMin; f <= yMax; f += ySpacing) {
+				int j = convertY(f);
+				g.drawLine(convertX(xMin), j, convertX(xMin) + tickLength, j);
+				String label = Float.toString(f);
+				g.drawString(label, leftMargin - fm.stringWidth(label) - 5, j + k / 2 - 2);
+			}
 		}
 		
 		int i = convertY(yMin);
+		if (axisEditor.isXLogarithmic) {
 		
-		for (float f = xMin; f <= xMax; f += xSpacing) {
-			int j = convertX(f);
-			g.drawLine(j, i, j, i - tickLength);
-			String label = Float.toString(f);
-			g.drawString(label, j - fm.stringWidth(label) / 2 , i + k);
+		} else {
+			for (float f = xMin; f <= xMax; f += xSpacing) {
+				int j = convertX(f);
+				g.drawLine(j, i, j, i - tickLength);
+				String label = Float.toString(f);
+				g.drawString(label, j - fm.stringWidth(label) / 2 , i + k);
+			}
 		}
 		return i + 2 * k + fm.getHeight();
 	}
